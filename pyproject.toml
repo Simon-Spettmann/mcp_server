@@ -1,69 +1,36 @@
-# SPDX-FileCopyrightText: 2024 Nextcloud GmbH and Nextcloud contributors
+# SPDX-FileCopyrightText: 2025 Nextcloud GmbH and Nextcloud contributors
 # SPDX-License-Identifier: AGPL-3.0-or-later
 [tool.poetry]
-name = "context_agent"
-description = ""
-authors = ["Marcel Klehr <mklehr@gmx.net>"]
-license = "AGPL-3.0"
+name = "nextcloud_mcp_server"
+description = "Nextcloud MCP Server - Exposes Nextcloud capabilities as MCP tools"
+authors = ["Nextcloud GmbH and contributors"]
+license = "AGPL-3.0-or-later"
 readme = "README.md"
 package-mode = false
 
 [tool.poetry.dependencies]
 python = ">=3.11,<4"
 nc-py-api = {extras = ["calendar"], version = "^0.24.2"}
-langgraph = "1.*"
-langchain = "^0.3.25"
+fastmcp = "^2.14"
+uvicorn = "^0.40"
+requests = "^2.31.0"
+niquests = "^3.17.0"
 ics = "^0.7.2"
 pytz = "^2025.2"
-langchain-community = "^0.3.23"
-vobject = "^0.9.9"
-youtube-search = "^2.1.2"
-uvicorn = "^0.40"
-langchain-mcp-adapters = "^0.1.9"
-fastmcp = "^2.14"
-niquests = "^3.17.0"
-ddgs = "^9.13.1"
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
-
 [tool.black]
 line-length = 120
-target-versions = ["py310"]
-preview = true
+target-version = ["py311"]
 
 [tool.ruff]
 line-length = 120
-target-version = "py310"
-select = ["A", "B", "C", "D", "E", "F", "G", "I", "S", "SIM", "PIE", "Q", "RET", "RUF", "UP" , "W"]
+target-version = "py311"
+select = ["A", "B", "C", "D", "E", "F", "G", "I", "S", "SIM", "PIE", "Q", "RET", "RUF", "UP", "W"]
 extend-ignore = ["D101", "D102", "D103", "D105", "D107", "D203", "D213", "D401", "I001", "RUF100", "D400", "D415"]
 
 [tool.isort]
 profile = "black"
-
-[tool.pylint]
-master.py-version = "3.11"
-master.extension-pkg-allow-list = ["pydantic"]
-design.max-attributes = 8
-design.max-locals = 16
-design.max-branches = 16
-design.max-returns = 8
-design.max-args = 7
-basic.good-names = [
-    "a", "b", "c", "d", "e", "f", "i", "j", "k", "r", "v",
-    "ex", "_", "fp", "im", "nc", "ui",
-]
-reports.output-format = "colorized"
-similarities.ignore-imports = "yes"
-similarities.min-similarity-lines = 6
-messages_control.disable = [
-    "missing-class-docstring",
-    "missing-function-docstring",
-    "line-too-long",
-    "too-few-public-methods",
-    "too-many-public-methods",
-    "global-statement",
-    "broad-exception-caught",
-]

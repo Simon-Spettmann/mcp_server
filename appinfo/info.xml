@@ -1,42 +1,34 @@
 <?xml version="1.0"?>
 <!--
-  - SPDX-FileCopyrightText: 2024 Nextcloud GmbH and Nextcloud contributors
+  - SPDX-FileCopyrightText: 2025 Nextcloud GmbH and Nextcloud contributors
   - SPDX-License-Identifier: AGPL-3.0-or-later
 -->
 <info>
-	<id>context_agent</id>
-	<name>Nextcloud Context Agent</name>
-	<summary>Let Nextcloud assistant take off tasks from your todo list.</summary>
+	<id>nextcloud_mcp_server</id>
+	<name>Nextcloud MCP Server</name>
+	<summary>Exposes Nextcloud capabilities as MCP tools</summary>
 	<description>
 	<![CDATA[
-Let Nextcloud Assistant take off tasks from your todo list. Context Agent provides the AI chat in Assistant with the tools to perform actions in your Nextcloud upon sending instructions in a chat message, for example
-- sending an email
-- writing a message in a Talk room
-- creating calendar entrys
+Nextcloud MCP Server provides a Model Context Protocol (MCP) interface to Nextcloud.
+This allows any MCP-compatible client to access Nextcloud tools and resources.
 
-and much more. 
+Features:
+- Exposes Nextcloud capabilities (mail, calendar, files, etc.) as MCP tools
+- No LLM required - pure tool gateway
+- Can be used by any MCP client (AI agents, CLI tools, scripts)
+- Authentication via Nextcloud user context
 
-This app needs Nextcloud Assistant and an AI provider to work.
-Read [the documentation](https://docs.nextcloud.com/server/latest/admin_manual/ai/app_context_agent.html).
-
-## Ethical AI Rating
-
-### Rating: 🟢
-
-Positive:
-
-* The software for this app is open source, no trained AI model is used
+This app is a standalone MCP server with no AI dependencies.
 ]]>
 	</description>
-	<version>2.6.0</version>
-	<licence>MIT</licence>
+	<version>1.0.0</version>
+	<licence>AGPL-3.0-or-later</licence>
 	<author mail="mklehr@gmx.net" homepage="https://marcelklehr.de">Marcel Klehr</author>
-	<namespace>ContextAgent</namespace>
+	<namespace>NextcloudMCP</namespace>
 	<category>tools</category>
-	<category>ai</category>
+	<category>integration</category>
 	<website>https://github.com/nextcloud/context_agent</website>
 	<bugs>https://github.com/nextcloud/context_agent/issues</bugs>
-	<screenshot>https://github.com/nextcloud/context_agent/blob/main/img/screenshot.png?raw=true</screenshot>
 	<repository type="git">https://github.com/nextcloud/context_agent</repository>
 	<dependencies>
 		<nextcloud min-version="31.0.8" max-version="34"/>
@@ -44,15 +36,14 @@ Positive:
 	<external-app>
 		<docker-install>
 			<registry>ghcr.io</registry>
-			<image>nextcloud/context_agent</image>
-			<image-tag>2.6.0</image-tag>
+			<image>nextcloud/nextcloud_mcp_server</image>
+			<image-tag>1.0.0</image-tag>
 		</docker-install>
-        <routes>
+		<routes>
 			<route>
 				<url>mcp</url>
-				<verb>POST,GET,DELETE</verb>
+				<verb>POST,GET</verb>
 				<access_level>USER</access_level>
-				<headers_to_exclude>[]</headers_to_exclude>
 			</route>
 		</routes>
 	</external-app>

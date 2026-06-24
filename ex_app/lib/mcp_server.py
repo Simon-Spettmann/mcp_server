@@ -1,97 +1,86 @@
-# SPDX-FileCopyrightText: 2024 LangChain, Inc.
-# SPDX-License-Identifier: MIT
-import time
+# SPDX-FileCopyrightText: 2025 Nextcloud GmbH and Nextcloud contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+"""
+Nextcloud MCP Server
+
+A clean MCP server that exposes Nextcloud capabilities as tools.
+This is a standalone tool gateway with no LLM or agent dependencies.
+"""
 import asyncio
-import inspect
+import json
+import time
 from functools import wraps
+from typing import Any, Callable
 
-from fastmcp.server.dependencies import get_context
-from nc_py_api import AsyncNextcloudApp, NextcloudApp
-from fastmcp.server.middleware import Middleware, MiddlewareContext, CallNext
-from fastmcp.server.dependencies import get_http_headers
-from fastmcp.tools import Tool
-from mcp import types as mt
-from ex_app.lib.tools import get_tools
 import requests
-
-def get_user(authorization_header: str, nc: AsyncNextcloudApp) -> str:
-	response = requests.get(
-		f"{nc.app_cfg.endpoint}/ocs/v2.php/cloud/user",
-		headers={
-			"Accept": "application/json",
-			"Ocs-Apirequest": "1",
-			"Authorization": authorization_header,
-		},
-	)
-	if response.status_code != 200:
-		raise Exception("Failed to get user info")
-	return response.json()["ocs"]["data"]["id"]
+from fastmcp import FastMCP
+from fastmcp.server.dependencies import get_context, get_http_headers
+from fastmcp.server.middleware import CallNext, Middleware, MiddlewareContext
+from nc_py_api import AsyncNextcloudApp
 
 
 class UserAuthMiddleware(Middleware):
-	async def on_message(self, context: MiddlewareContext, call_next):
-		# Middleware stores user info in context state
-		authorization_header = get_http_headers().get("authorization")
-		if authorization_header is None:
-			raise Exception("Authorization header is missing/invalid")
-		nc = AsyncNextcloudApp()
-		user = get_user(authorization_header, nc)
-		await nc.set_user(user)
-		context.fastmcp_context.set_state("nextcloud", nc)
-		return await call_next(context)
+    """Middleware to authenticate requests and set up Nextcloud context."""
+
+    async def on_message(self, context: MiddlewareContext, call_next: CallNext) -> Any:
+        authorization_header = get_http_headers().get("authorization")
+        if authorization_header is None:
+            raise Exception("Authorization header is missing")
+
+        # Get user info from Nextcloud
+        nc = AsyncNextcloudApp()
+        user = self._get_user(authorization_header, nc)
+        await nc.set_user(user)
+
+        # Store Nextcloud instance in context state
+        context.fastmcp_context.set_state("nextcloud", nc)
+
+        return await call_next(context)
+
+    def _get_user(self, authorization_header: str, nc: AsyncNextcloudApp) -> str:
+        """Get the current user from Nextcloud using the authorization header."""
+        response = requests.get(
+            f"{nc.app_cfg.endpoint}/ocs/v2.php/cloud/user",
+            headers={
+                "Accept": "application/json",
+                "Ocs-Apirequest": "1",
+                "Authorization": authorization_header,
+            },
+        )
+        if response.status_code != 200:
+            raise Exception("Failed to get user info")
+        return response.json()["ocs"]["data"]["id"]
 
 
-LAST_MCP_TOOL_UPDATE = 0
+def create_mcp_server() -> FastMCP:
+    """Create and configure the MCP server."""
+    mcp = FastMCP(name="nextcloud")
+
+    # Add authentication middleware
+    mcp.add_middleware(UserAuthMiddleware())
+
+    return mcp
 
 
-class ToolListMiddleware(Middleware):
-	def __init__(self, mcp):
-		self.mcp = mcp
+def get_nextcloud_from_context() -> AsyncNextcloudApp:
+    """Get the Nextcloud instance from the FastMCP context."""
+    ctx = get_context()
+    nc = ctx.get_state("nextcloud")
+    if nc is None:
+        raise Exception("Nextcloud instance not found in context")
+    return nc
 
-	async def on_message(
-			self,
-			context: MiddlewareContext[mt.ListToolsRequest],
-			call_next: CallNext[mt.ListToolsRequest, list[Tool]],
-	) -> list[Tool]:
-		global LAST_MCP_TOOL_UPDATE
-		if LAST_MCP_TOOL_UPDATE + 60 < time.time():
-			safe, dangerous = await get_tools(context.fastmcp_context.get_state("nextcloud"))
-			tools = await self.mcp.get_tools()
-			if LAST_MCP_TOOL_UPDATE + 60 < time.time():
-				for tool in tools.keys():
-					self.mcp.remove_tool(tool)
-				for tool in safe + dangerous:
-					tool_action = getattr(tool, "coroutine", None) or getattr(tool, "func", None)
-					if tool_action is None:
-						continue
-					tool_name = getattr(tool, "name", None)
-					if tool_name:
-						self.mcp.tool(name=tool_name)(mcp_tool(tool_action, tool_name=tool_name))
-					else:
-						self.mcp.tool()(mcp_tool(tool_action))
-				LAST_MCP_TOOL_UPDATE = time.time()
-		return await call_next(context)
 
-# Regenerates the tools with the correct nc object
-def mcp_tool(tool, tool_name: str | None = None):
-	@wraps(tool)
-	async def wrapper(*args, **kwargs):
-		ctx = get_context()
-		nc = ctx.get_state('nextcloud')
-		safe, dangerous = await get_tools(nc)
-		tools = safe + dangerous
-		invoked_name = tool_name or tool.__name__
-		for t in tools:
-			action = getattr(t, "coroutine", None) or getattr(t, "func", None)
-			if action is None:
-				continue
-			candidate_name = getattr(t, "name", None) or getattr(action, "__name__", None)
-			if candidate_name == invoked_name:
-				if inspect.iscoroutinefunction(action):
-					return await action(*args, **kwargs)
-				result = await asyncio.to_thread(action, *args, **kwargs)
-				if inspect.isawaitable(result):
-					return await result
-				return result
-		raise RuntimeError("Tool not found")
-	return wrapper
+# Create the MCP server instance
+mcp = create_mcp_server()
+
+# Register resources
+from ex_app.lib.resources import register_resources
+
+register_resources(mcp)
+
+# HTTP app for MCP
+http_mcp_app = mcp.http_app("/", transport="http", stateless_http=True)
+
+# Also support stdio transport for CLI clients
+stdio_mcp_app = mcp.stdio_app()
