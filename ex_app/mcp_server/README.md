@@ -250,7 +250,7 @@ async with httpx.AsyncClient() as client:
             "Authorization": "Bearer YOUR_ACCESS_TOKEN"
         }
     )
-    
+
     result = response.json()
     print(f"Files: {result['files']}")
     print(f"Directories: {result['directories']}")
@@ -273,7 +273,7 @@ async with httpx.AsyncClient() as client:
             "Authorization": "Bearer YOUR_ACCESS_TOKEN"
         }
     )
-    
+
     result = response.json()
     print(f"Content: {result['content']}")
 ```
@@ -297,7 +297,7 @@ async with httpx.AsyncClient() as client:
             "Authorization": "Bearer YOUR_ACCESS_TOKEN"
         }
     )
-    
+
     result = response.json()
     print(f"Success: {result['success']}")
 ```
